@@ -35,12 +35,6 @@ NLP tool Development/
 - Python 3.8 or higher
 - FFmpeg (for audio format conversion)
 
-### Quick Start (Recommended)
-
-```bash
-# Just run this one command:
-./start.sh
-```
 
 **That's it!** The script will automatically install everything and start the server.
 
