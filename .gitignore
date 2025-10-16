@@ -1,0 +1,77 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Application specific
+uploads/
+results/
+*.wav
+*.mp3
+*.m4a
+*.ogg
+!vosk\ assignment/audios/*.wav
+
+# Logs
+*.log
+logs/
+
+# Models (keep vosk model, exclude others)
+# If models are large, download separately
+# *.mdl
+# *.fst
+
+# Temporary files
+temp/
+tmp/
+*.tmp
+
+# Environment variables
+.env
+.env.local
+
+# Docker
+.dockerignore
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Distribution
+build/
+dist/
+*.egg-info/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+test_dummy
