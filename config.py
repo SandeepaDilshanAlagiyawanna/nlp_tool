@@ -11,7 +11,7 @@ AUDIO_CHANNELS = 1
 AUDIO_SAMPLE_WIDTH = 2
 
 # Summarization Configuration
-SUMMARY_SENTENCES = 3  # Number of sentences in summary
+SUMMARY_SENTENCES = 5  # Number of sentences in summary (increased to 4 for ~100 words)
 MIN_SUMMARY_LENGTH = 50  # Minimum characters for summarization
 
 # Translation Configuration
