@@ -6,4 +6,5 @@ pydub
 nltk
 transformers
 torch
-sentencepiece
+sentencepiece 
+deepmultilingualpunctuation

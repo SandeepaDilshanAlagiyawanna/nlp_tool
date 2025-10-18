@@ -8,6 +8,7 @@ import os
 import wave
 from pydub import AudioSegment
 import vosk
+from deepmultilingualpunctuation import PunctuationModel
 
 
 def transcribe_audio(
@@ -97,7 +98,10 @@ def transcribe_audio(
 
         transcription = full_text.strip()
         print(f"Transcription completed: {transcription[:100]}...")
-        return transcription
+        model = PunctuationModel()
+        punctuated_text = model.restore_punctuation(transcription)
+        
+        return punctuated_text
 
     except Exception as e:
         print(f"Error during transcription: {e}")
