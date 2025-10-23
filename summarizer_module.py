@@ -1,40 +1,42 @@
 """
 Text Summarization Module
-Summarizes English text using TF-IDF algorithm
+Summarizes English text using transformer-based model (BART)
 """
 
-import nltk
-import re
-import heapq
-from nltk.corpus import stopwords
-from nltk.tokenize import sent_tokenize, word_tokenize
-import math
-
-
-# Download NLTK resources if not already downloaded
+# We use Hugging Face's 'transformers' library for the summarization model.
+# 'sentencepiece' is required for tokenization in certain models.
 try:
-    nltk.data.find("tokenizers/punkt")
-except LookupError:
-    nltk.download("punkt")
+    from transformers import pipeline
+except ImportError:
+    import sys
+    import subprocess
 
-try:
-    nltk.data.find("punkt_tab")
-except LookupError:
-    nltk.download("punkt_tab")
+    subprocess.check_call(
+        [
+            sys.executable,
+            "-m",
+            "pip",
+            "install",
+            "transformers==4.44.2",
+            "sentencepiece",
+        ]
+    )
+    from transformers import pipeline
 
-try:
-    nltk.data.find("corpora/stopwords")
-except LookupError:
-    nltk.download("stopwords")
+# The pipeline function simplifies using pre-trained models.
+# We use the 'summarization' pipeline with Facebook's BART model.
+# Initialize the model once when the module is imported
+summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
 
 
 def summarize_text(text, num_sentences=3):
     """
-    Summarize text using TF-IDF algorithm
+    Summarize text using transformer-based model (BART)
 
     Args:
         text: Input text to summarize
         num_sentences: Number of sentences in summary (default: 3)
+                      Note: This is used to estimate max_length for the model
 
     Returns:
         str: Summarized text or original if too short
@@ -43,90 +45,24 @@ def summarize_text(text, num_sentences=3):
         if not text or len(text.strip()) == 0:
             return ""
 
-        # Clean the text for word tokenization and frequency calculation
-        # Remove extra whitespace, numbers in brackets, and non-alphabetic characters
-        clean_text_for_words = re.sub(r"\s+", " ", text)
-        clean_text_for_words = re.sub(r"\[[0-9]*\]", " ", clean_text_for_words)
-        clean_text_for_words = re.sub(r"[^a-zA-Z]", " ", clean_text_for_words)
+        # Estimate max_length based on desired number of sentences
+        # Approximate: ~25-30 words per sentence = ~30-35 tokens per sentence
+        # For 100 words (4 sentences), we need ~120-140 tokens
+        # Increased both max and min to ensure longer, more detailed summaries
+        max_length = min(
+            num_sentences * 35, 500
+        )  # Increased cap to 500 tokens for much longer summaries
+        min_length = max(80, num_sentences * 20)  # Minimum 80 tokens (~60-70 words)
 
-        # Tokenize sentences (keep original text with punctuation for sentence tokenization)
-        sentences = sent_tokenize(text)
+        # Use the summarization model
+        result = summarizer(
+            text, max_length=max_length, min_length=min_length, do_sample=False
+        )
+        summary = result[0]["summary_text"]
 
-        # If text is too short, return as is
-        if len(sentences) <= num_sentences:
-            return text
-
-        # Tokenize words from cleaned text and convert to lowercase
-        words = word_tokenize(clean_text_for_words.lower())
-
-        # Remove stopwords
-        stop_words = set(stopwords.words("english"))
-        words = [word for word in words if word not in stop_words]
-
-        if len(words) == 0:
-            return text
-
-        # Calculate Term Frequency (TF)
-        # Count the occurrences of each word
-        word_frequencies = {}
-        for word in words:
-            if word not in word_frequencies:
-                word_frequencies[word] = 1
-            else:
-                word_frequencies[word] += 1
-
-        # Calculate Inverse Document Frequency (IDF)
-        # Determine how common or rare a word is across all sentences
-        idf = {}
-        num_sentences_count = len(sentences)
-
-        for sentence in sentences:
-            # Get unique words in each sentence
-            unique_words = set(nltk.word_tokenize(sentence.lower()))
-            for word in unique_words:
-                # Only consider words that were kept after stopword removal and cleaning
-                if word in word_frequencies:
-                    if word not in idf:
-                        idf[word] = 1
-                    else:
-                        idf[word] += 1
-
-        # Calculate the IDF score for each word using the logarithmic formula
-        for word, count in idf.items():
-            idf[word] = math.log(num_sentences_count / (count + 1))
-
-        # Calculate TF-IDF
-        # Multiply TF and IDF to get a score for each word that reflects its importance in the document
-        tf_idf_scores = {}
-        for word, tf in word_frequencies.items():
-            if word in idf:
-                tf_idf_scores[word] = tf * idf[word]
-            else:
-                # This case should theoretically not be reached if word_frequencies is based on cleaned words
-                tf_idf_scores[word] = 0
-
-        # Score sentences using TF-IDF
-        # Sum the TF-IDF scores of the words in each sentence to get a sentence score
-        sentence_scores = {}
-        for sent in sentences:
-            current_sentence_score = 0
-            for word in nltk.word_tokenize(sent.lower()):
-                if word in tf_idf_scores:
-                    current_sentence_score += tf_idf_scores[word]
-            sentence_scores[sent] = current_sentence_score
-
-        # Generate Summary (Select top N sentences)
-        n = num_sentences  # You can adjust N here to change the number of sentences in the summary
-        # Handle case where there are fewer sentences than the desired number of sentences in the summary
-        if len(sentences) < n:
-            n = len(sentences)
-
-        # Select the top N sentences with the highest TF-IDF scores
-        summary_sentences = heapq.nlargest(n, sentence_scores, key=sentence_scores.get)
-        # Join the selected sentences to form the summary
-        summary = " ".join(summary_sentences)
-
-        print(f"Summarization completed: {len(sentences)} sentences -> {n} sentences")
+        print(
+            f"Summarization completed: Generated summary with ~{len(summary.split())} words"
+        )
         return summary
 
     except Exception as e:
@@ -135,16 +71,27 @@ def summarize_text(text, num_sentences=3):
 
 
 if __name__ == "__main__":
-    # Test the module
-    test_text = """
-    Natural language processing is a subfield of linguistics, computer science, and artificial intelligence 
-    concerned with the interactions between computers and human language. In particular, it focuses on how to 
-    program computers to process and analyze large amounts of natural language data. The goal is a computer 
-    capable of understanding the contents of documents, including the contextual nuances of the language within them. 
-    The technology can then accurately extract information and insights contained in the documents as well as 
-    categorize and organize the documents themselves. Challenges in natural language processing frequently involve 
-    speech recognition, natural language understanding, and natural language generation.
-    """
-    result = summarize_text(test_text, num_sentences=2)
-    print(f"\nOriginal ({len(test_text)} chars):\n{test_text}")
-    print(f"\nSummary ({len(result)} chars):\n{result}")
+    # Test the module with interactive input
+    try:
+        from rouge_score import rouge_scorer
+    except ImportError:
+        import sys
+        import subprocess
+
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "rouge-score"])
+        from rouge_score import rouge_scorer
+
+    # Enter custom text to test summarization.
+    user_text = input("\nEnter your own paragraph for summarization:\n\n")
+
+    if len(user_text.strip()) > 0:
+        result = summarize_text(user_text, num_sentences=3)
+        print("\n Summary:\n")
+        print(result)
+
+        # Evaluate Summary Quality using ROUGE
+        scorer = rouge_scorer.RougeScorer(["rouge1", "rougeL"], use_stemmer=True)
+        scores = scorer.score(user_text, result)
+        print("\n📊 ROUGE Evaluation Metrics:\n", scores)
+    else:
+        print("⚠️ No input text provided.")

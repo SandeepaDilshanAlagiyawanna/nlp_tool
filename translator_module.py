@@ -25,12 +25,13 @@ def load_model():
     return _model, _tokenizer
 
 
-def translate_to_sinhala(text):
+def translate_to_sinhala(text, use_context=True):
     """
     Translate English text to Sinhala
 
     Args:
         text: English text to translate
+        use_context: Whether to use contextual translation (default: True)
 
     Returns:
         str: Translated Sinhala text or empty string if failed
@@ -62,6 +63,8 @@ def translate_to_sinhala(text):
 
         # Translate sentence by sentence for better results
         translated_sentences = []
+        context_buffer = []  # Store previous sentences for context
+
         for i, sentence in enumerate(sentences):
             if sentence.strip():  # Skip empty sentences
                 print(
@@ -69,8 +72,15 @@ def translate_to_sinhala(text):
                 )
 
                 try:
+                    # Add context from previous sentence for better coherence
+                    if use_context and context_buffer:
+                        # Combine with previous sentence for context
+                        contextual_input = context_buffer[-1] + " " + sentence
+                    else:
+                        contextual_input = sentence
+
                     inputs = tokenizer(
-                        sentence,
+                        contextual_input,
                         return_tensors="pt",
                         padding=True,
                         truncation=True,
@@ -79,15 +89,31 @@ def translate_to_sinhala(text):
                     outputs = model.generate(
                         **inputs,
                         max_length=512,  # Keep reasonable for each sentence
-                        num_beams=5,  # Increased for better quality
+                        num_beams=8,  # Increased from 5 for better quality
                         early_stopping=True,
-                        no_repeat_ngram_size=2,  # Avoid repetition
-                        length_penalty=1.0,  # Balanced length
+                        no_repeat_ngram_size=3,  # Increased to avoid more repetition
+                        length_penalty=1.2,  # Slightly favor longer, more complete translations
+                        temperature=0.7,  # Add some randomness for more natural output
+                        top_k=50,  # Limit vocabulary for more focused translations
+                        top_p=0.95,  # Nucleus sampling for better coherence
                     )
-                    translated_sentence = tokenizer.decode(
-                        outputs[0], skip_special_tokens=True
-                    )
+                    decoded = tokenizer.decode(outputs[0], skip_special_tokens=True)
+
+                    # If we used context, extract only the new sentence part
+                    if use_context and context_buffer:
+                        # Split and take the latter part (new translation)
+                        parts = decoded.split(". ")
+                        translated_sentence = parts[-1] if len(parts) > 1 else decoded
+                    else:
+                        translated_sentence = decoded
+
                     translated_sentences.append(translated_sentence)
+                    context_buffer.append(sentence)
+
+                    # Keep only last 2 sentences for context
+                    if len(context_buffer) > 2:
+                        context_buffer.pop(0)
+
                     print(f"    ✓ Result: {translated_sentence[:60]}...")
 
                 except Exception as e:
